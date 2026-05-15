@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>予約管理</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Shippori+Mincho:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232633;
+    --border: #2e3245;
+    --accent: #c8a96e;
+    --accent2: #e8c98e;
+    --text: #e8e6e0;
+    --muted: #7a7d8e;
+    --green: #4caf82;
+    --red: #e05c5c;
+    --yellow: #e8b84b;
+    --blue: #5b8dee;
+    --counter: #7b68ee;
+    --table4: #5b8dee;
+    --table6: #4caf82;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header h1 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+  .header-date {
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .btn-new {
+    background: var(--accent);
+    color: #0f1117;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 14px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: background 0.2s;
+  }
+  .btn-new:hover { background: var(--accent2); }
+
+  /* Tab bar */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 12px 20px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* Main */
+  .main { padding: 16px; max-width: 700px; margin: 0 auto; }
+
+  /* Date navigator */
+  .date-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+  }
+  .date-nav button {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .date-nav button:hover { border-color: var(--accent); color: var(--accent); }
+  .date-nav-center { text-align: center; }
+  .date-nav-main {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.08em;
+  }
+  .date-nav-sub { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+
+  /* Stats bar */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 10px;
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-family: 'Shippori Mincho', serif;
+    color: var(--accent);
+  }
+  .stat-label { font-size: 0.62rem; color: var(--muted); margin-top: 4px; letter-spacing: 0.04em; }
+
+  /* Timeline */
+  .timeline-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .timeline-header h2 {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+  .seat-legend {
+    display: flex;
+    gap: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.62rem;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+  }
+
+  /* Reservation cards */
+  .reservation-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .res-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .res-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+  }
+  .res-card.counter::before { background: var(--counter); }
+  .res-card.table4::before { background: var(--table4); }
+  .res-card.table6::before { background: var(--table6); }
+  .res-card:hover { border-color: var(--accent); background: var(--surface2); }
+  .res-card.cancelled { opacity: 0.4; }
+  .res-card.cancelled::before { background: var(--muted); }
+
+  .res-time {
+    min-width: 48px;
+    text-align: center;
+  }
+  .res-time-main {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .res-time-sub { font-size: 0.62rem; color: var(--muted); }
+
+  .res-divider { width: 1px; height: 40px; background: var(--border); flex-shrink: 0; }
+
+  .res-info { flex: 1; min-width: 0; }
+  .res-name { font-size: 0.92rem; font-weight: 500; margin-bottom: 4px; }
+  .res-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .res-tag {
+    font-size: 0.62rem;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .res-tag.counter { background: rgba(123,104,238,0.2); color: var(--counter); }
+  .res-tag.table4 { background: rgba(91,141,238,0.2); color: var(--table4); }
+  .res-tag.table6 { background: rgba(76,175,130,0.2); color: var(--table6); }
+  .res-people { font-size: 0.72rem; color: var(--muted); }
+  .res-note { font-size: 0.68rem; color: var(--yellow); margin-top: 3px; }
+
+  .res-status {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .status-badge {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .status-badge.confirmed { background: rgba(76,175,130,0.2); color: var(--green); }
+  .status-badge.pending { background: rgba(232,184,75,0.2); color: var(--yellow); }
+  .status-badge.cancelled { background: rgba(224,92,92,0.2); color: var(--red); }
+
+  .res-phone { font-size: 0.68rem; color: var(--muted); margin-top: 4px; }
+
+  /* Empty state */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 16px; opacity: 0.4; }
+  .empty p { font-size: 0.8rem; line-height: 1.8; }
+
+  /* Seat map */
+  .seat-map {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .seat-map h3 {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+  }
+  .seat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .seat-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    position: relative;
+  }
+  .seat-item.occupied { border-color: rgba(224,92,92,0.4); background: rgba(224,92,92,0.05); }
+  .seat-item.available { border-color: rgba(76,175,130,0.4); background: rgba(76,175,130,0.05); }
+  .seat-item-name { font-size: 0.78rem; font-weight: 500; margin-bottom: 6px; }
+  .seat-item-cap { font-size: 0.65rem; color: var(--muted); margin-bottom: 8px; }
+  .seat-item-status { font-size: 0.68rem; font-weight: 600; }
+  .seat-item.occupied .seat-item-status { color: var(--red); }
+  .seat-item.available .seat-item-status { color: var(--green); }
+  .seat-item-guest { font-size: 0.68rem; color: var(--muted); margin-top: 4px; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px 12px 0 0;
+    padding: 24px 20px 40px;
+    width: 100%;
+    max-width: 540px;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .modal h2 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1rem;
+    margin-bottom: 20px;
+    letter-spacing: 0.08em;
+  }
+  .modal-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+  }
+  .modal-row .label { color: var(--muted); font-size: 0.72rem; }
+  .modal-row .value { font-weight: 500; }
+  .modal-note {
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(232,184,75,0.08);
+    border-left: 2px solid var(--yellow);
+    font-size: 0.75rem;
+    line-height: 1.7;
+    color: var(--yellow);
+    border-radius: 0 4px 4px 0;
+  }
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .modal-btn {
+    flex: 1;
+    padding: 11px;
+    border-radius: 6px;
+    border: none;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.2s;
+  }
+  .modal-btn.confirm { background: var(--green); color: white; }
+  .modal-btn.cancel-btn { background: rgba(224,92,92,0.15); color: var(--red); border: 1px solid rgba(224,92,92,0.3); }
+  .modal-btn.close-btn { background: var(--border); color: var(--muted); }
+  .modal-btn:hover { opacity: 0.85; }
+
+  /* Add form modal */
+  .form-field { margin-bottom: 14px; }
+  .form-field label { display: block; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.06em; margin-bottom: 6px; }
+  .form-field input, .form-field select, .form-field textarea {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-field input:focus, .form-field select:focus { border-color: var(--accent); }
+  .form-field select option { background: var(--surface2); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-field textarea { resize: none; height: 70px; line-height: 1.5; }
+
+  /* Toggle tabs */
+  .view-toggle {
+    display: flex;
+    gap: 4px;
+  }
+  .view-btn {
+    padding: 5px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--muted);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .view-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>予約管理</h1>
+  </div>
+  <button class="btn-new" onclick="openAddModal()">＋ 新規予約</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('today', this)">本日</div>
+  <div class="tab" onclick="switchTab('tomorrow', this)">明日</div>
+  <div class="tab" onclick="switchTab('week', this)">今週</div>
+  <div class="tab" onclick="switchTab('all', this)">一覧</div>
+</div>
+
+<div class="main">
+
+  <!-- Date navigator -->
+  <div class="date-nav">
+    <button onclick="changeDay(-1)">&#8249;</button>
+    <div class="date-nav-center">
+      <div class="date-nav-main" id="navDateMain"></div>
+      <div class="date-nav-sub" id="navDateSub"></div>
+    </div>
+    <button onclick="changeDay(1)">&#8250;</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-num" id="statTotal">0</div>
+      <div class="stat-label">本日の予約</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statPeople">0</div>
+      <div class="stat-label">合計人数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statSeats">0</div>
+      <div class="stat-label">空き席数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statPending">0</div>
+      <div class="stat-label">未確認</div>
+    </div>
+  </div>
+
+  <!-- View toggle -->
+  <div class="timeline-header">
+    <h2>— 予約一覧</h2>
+    <div class="view-toggle">
+      <button class="view-btn active" onclick="switchView('list', this)">リスト</button>
+      <button class="view-btn" onclick="switchView('map', this)">席状況</button>
+    </div>
+  </div>
+
+  <!-- List view -->
+  <div id="listView">
+    <div class="reservation-list" id="resList"></div>
+  </div>
+
+  <!-- Seat map view -->
+  <div id="mapView" style="display:none">
+    <div class="seat-map">
+      <h3>— 席の状況（選択中の日程）</h3>
+      <div class="seat-grid" id="seatGrid"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal" onclick="closeModal('detailModal')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <h2 id="modalTitle">予約詳細</h2>
+    <div id="modalContent"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal-overlay" id="addModal" onclick="closeModal('addModal')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-height:85vh;overflow-y:auto;padding-bottom:24px">
+    <div class="modal-handle"></div>
+    <h2>新規予約を追加</h2>
+    <div class="form-row">
+      <div class="form-field">
+        <label>日付</label>
+        <input type="date" id="addDate">
+      </div>
+      <div class="form-field">
+        <label>時間</label>
+        <select id="addTime">
+          <option>17:00</option><option>17:30</option>
+          <option>18:00</option><option>18:30</option>
+          <option>19:00</option><option>19:30</option>
+          <option>20:00</option><option>20:30</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>お席</label>
+        <select id="addSeat">
+          <option value="counter">カウンター</option>
+          <option value="table4">テーブル4名</option>
+          <option value="table6">テーブル6名</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>人数</label>
+        <select id="addPeople">
+          <option>1</option><option selected>2</option><option>3</option>
+          <option>4</option><option>5</option><option>6</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-field">
+      <label>お名前</label>
+      <input type="text" id="addName" placeholder="山田 太郎">
+    </div>
+    <div class="form-field">
+      <label>電話番号</label>
+      <input type="tel" id="addPhone" placeholder="090-0000-0000">
+    </div>
+    <div class="form-field">
+      <label>メモ・ご要望</label>
+      <textarea id="addNote" placeholder="アレルギー・お祝いなど"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn confirm" onclick="addReservation()">予約を追加</button>
+      <button class="modal-btn close-btn" onclick="closeModal('addModal')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw2Qy3g4dR_NfCV1dCYgK22zMJBFbdFH840aDZ7uv36G1Ep5X-S228Xt56ZSs3g6aSyDA/exec';
+
+// ===== DATA =====
+let reservations = [];
+let nextId = 1;
+
+// GASから全予約を読み込む
+async function loadReservations() {
+  if (GAS_URL === 'YOUR_GAS_URL') {
+    // GAS未設定時はサンプルデータ
+    reservations = [
+      { id: 'R001', date: getTodayStr(), time: '17:30', seat: 'counter', people: 2, name: '田中 一郎', phone: '090-1234-5678', note: '', status: 'confirmed' },
+      { id: 'R002', date: getTodayStr(), time: '18:00', seat: 'table4', people: 3, name: '佐藤 花子', phone: '080-9876-5432', note: 'お誕生日のお祝いです', status: 'confirmed' },
+      { id: 'R003', date: getTodayStr(), time: '18:30', seat: 'table6', people: 5, name: '鈴木 健太', phone: '070-1111-2222', note: 'えび・かにアレルギー', status: 'pending' },
+      { id: 'R004', date: getTodayStr(), time: '19:00', seat: 'counter', people: 1, name: '高橋 美咲', phone: '090-3333-4444', note: '', status: 'confirmed' },
+      { id: 'R005', date: getTodayStr(), time: '20:00', seat: 'table4', people: 2, name: '伊藤 大輔', phone: '080-5555-6666', note: '', status: 'cancelled' },
+    ];
+    render();
+    return;
+  }
+  try {
+    document.getElementById('resList').innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><p>読み込み中...</p></div>';
+    const res = await fetch(`${GAS_URL}?action=getAll`);
+    const data = await res.json();
+    if (data.success) {
+      reservations = data.reservations;
+    }
+  } catch (e) {
+    console.error('読み込みエラー', e);
+  }
+  render();
+}
+
+async function updateStatus(id, status) {
+  reservations = reservations.map(r => r.id === id ? { ...r, status } : r);
+  render();
+  if (GAS_URL === 'YOUR_GAS_URL') return;
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'update', id, status }),
+    });
+  } catch (e) { console.error(e); }
+}
+
+async function addReservation() {
+  const name = document.getElementById('addName').value.trim();
+  const phone = document.getElementById('addPhone').value.trim();
+  if (!name || !phone) { alert('お名前と電話番号を入力してください'); return; }
+
+  const newRes = {
+    id: 'R' + Date.now(),
+    date: document.getElementById('addDate').value,
+    time: document.getElementById('addTime').value,
+    seat: document.getElementById('addSeat').value,
+    people: parseInt(document.getElementById('addPeople').value),
+    name, phone,
+    note: document.getElementById('addNote').value.trim(),
+    status: 'confirmed',
+  };
+  reservations.push(newRes);
+
+  document.getElementById('addName').value = '';
+  document.getElementById('addPhone').value = '';
+  document.getElementById('addNote').value = '';
+  closeModal('addModal');
+  render();
+
+  if (GAS_URL === 'YOUR_GAS_URL') return;
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'add', ...newRes }),
+    });
+  } catch (e) { console.error(e); }
+}
+
+let currentDate = new Date();
+currentDate.setHours(0,0,0,0);
+
+function getTodayStr() {
+  return formatDate(new Date());
+}
+function formatDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatDateJP(d) {
+  const wdays = ['日','月','火','水','木','金','土'];
+  return `${d.getMonth()+1}月${d.getDate()}日（${wdays[d.getDay()]}）`;
+}
+
+let currentTab = 'today';
+
+// ===== RENDER =====
+function render() {
+  const dateStr = formatDate(currentDate);
+
+  // 日付ナビ表示
+  if (currentTab === 'week') {
+    const weekStart = getWeekStart(currentDate);
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+    document.getElementById('navDateMain').textContent = `${formatDateJP(weekStart)} 〜 ${weekStart.getMonth()+1}月${weekEnd.getDate()}日`;
+    document.getElementById('navDateSub').textContent = '今週';
+  } else if (currentTab === 'all') {
+    document.getElementById('navDateMain').textContent = '全予約一覧';
+    document.getElementById('navDateSub').textContent = `全${reservations.length}件`;
+  } else {
+    document.getElementById('navDateMain').textContent = formatDateJP(currentDate);
+    const isToday = dateStr === getTodayStr();
+    document.getElementById('navDateSub').textContent = isToday ? '本日' : currentDate.getFullYear() + '年';
+  }
+
+  // 表示対象の予約を絞り込む
+  let targetRes;
+  if (currentTab === 'week') {
+    const weekStart = getWeekStart(currentDate);
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+    targetRes = reservations.filter(r => r.date >= formatDate(weekStart) && r.date <= formatDate(weekEnd));
+  } else if (currentTab === 'all') {
+    targetRes = [...reservations];
+  } else {
+    targetRes = reservations.filter(r => r.date === dateStr);
+  }
+
+  const active = targetRes.filter(r => r.status !== 'cancelled');
+
+  // Stats
+  document.getElementById('statTotal').textContent = active.length;
+  document.getElementById('statPeople').textContent = active.reduce((s,r) => s+parseInt(r.people), 0);
+  let emptySeats = '—';
+  if (currentTab === 'today' || currentTab === 'tomorrow') {
+    const counterUsed = active.filter(r => r.seat === 'counter').reduce((s,r) => s+parseInt(r.people), 0);
+    const table4Empty = active.some(r => r.seat === 'table4') ? 0 : 4;
+    const table6Empty = active.some(r => r.seat === 'table6') ? 0 : 6;
+    emptySeats = (7 - counterUsed) + table4Empty + table6Empty;
+  }
+  document.getElementById('statSeats').textContent = emptySeats;
+  document.getElementById('statPending').textContent = targetRes.filter(r => r.status === 'pending').length;
+
+  // List
+  const list = document.getElementById('resList');
+  const sorted = [...targetRes].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  if (sorted.length === 0) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><p>予約はありません</p></div>`;
+  } else {
+    list.innerHTML = '';
+    let lastDate = '';
+    sorted.forEach(r => {
+      // 週・一覧表示では日付ヘッダーを挿入
+      if ((currentTab === 'week' || currentTab === 'all') && r.date !== lastDate) {
+        lastDate = r.date;
+        const dh = document.createElement('div');
+        dh.style.cssText = 'font-size:0.7rem;color:var(--muted);letter-spacing:0.08em;padding:12px 4px 6px;';
+        const d = new Date(r.date + 'T00:00:00');
+        dh.textContent = `— ${formatDateJP(d)}`;
+        list.appendChild(dh);
+      }
+      const seatNames = { counter: 'カウンター', table4: 'テーブル4名', table6: 'テーブル6名' };
+      const card = document.createElement('div');
+      card.className = `res-card ${r.seat}${r.status === 'cancelled' ? ' cancelled' : ''}`;
+      card.innerHTML = `
+        <div class="res-time">
+          <div class="res-time-main">${r.time}</div>
+        </div>
+        <div class="res-divider"></div>
+        <div class="res-info">
+          <div class="res-name">${r.name}</div>
+          <div class="res-meta">
+            <span class="res-tag ${r.seat}">${seatNames[r.seat]}</span>
+            <span class="res-people">${r.people}名</span>
+          </div>
+          ${r.note ? `<div class="res-note">⚠ ${r.note}</div>` : ''}
+          <div class="res-phone">${r.phone}</div>
+        </div>
+        <div class="res-status">
+          <div class="status-badge ${r.status}">${r.status === 'confirmed' ? '確認済' : r.status === 'pending' ? '未確認' : 'キャンセル'}</div>
+        </div>
+      `;
+      card.onclick = () => openDetailModal(r);
+      list.appendChild(card);
+    });
+  }
+
+  // Seat map（日別のみ）
+  renderSeatMap(dateStr);
+}
+
+function getWeekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() - day);
+  return d;
+}
+
+function renderSeatMap(dateStr) {
+  const active = reservations.filter(r => r.date === dateStr && r.status !== 'cancelled');
+  const seats = [
+    { id: 'counter', name: 'カウンター席', cap: '最大3名' },
+    { id: 'table4', name: 'テーブル席（4名）', cap: '最大4名' },
+    { id: 'table6', name: 'テーブル席（6名）', cap: '最大6名' },
+  ];
+  const grid = document.getElementById('seatGrid');
+  grid.innerHTML = '';
+  seats.forEach(seat => {
+    const res = active.find(r => r.seat === seat.id);
+    const div = document.createElement('div');
+    div.className = `seat-item ${res ? 'occupied' : 'available'}`;
+    div.innerHTML = `
+      <div class="seat-item-name">${seat.name}</div>
+      <div class="seat-item-cap">${seat.cap}</div>
+      <div class="seat-item-status">${res ? '✕ 使用中' : '◯ 空き'}</div>
+      ${res ? `<div class="seat-item-guest">${res.time} ${res.name}様 ${res.people}名</div>` : ''}
+    `;
+    grid.appendChild(div);
+  });
+}
+
+// ===== NAVIGATION =====
+function changeDay(dir) {
+  currentDate.setDate(currentDate.getDate() + dir);
+  render();
+}
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentTab = tab;
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (tab === 'today') { currentDate = new Date(today); }
+  else if (tab === 'tomorrow') { currentDate = new Date(today); currentDate.setDate(today.getDate()+1); }
+  else if (tab === 'week') { currentDate = new Date(today); }
+  else if (tab === 'all') { currentDate = new Date(today); }
+  // 週・一覧は日付ナビを隠す
+  document.querySelector('.date-nav').style.display = (tab === 'all') ? 'none' : 'flex';
+  render();
+}
+
+function switchView(view, el) {
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('listView').style.display = view === 'list' ? 'block' : 'none';
+  document.getElementById('mapView').style.display = view === 'map' ? 'block' : 'none';
+}
+
+// ===== MODALS =====
+function openDetailModal(r) {
+  const seatNames = { counter: 'カウンター席', table4: 'テーブル席（4名）', table6: 'テーブル席（6名）' };
+  const statusLabels = { confirmed: '確認済み', pending: '未確認', cancelled: 'キャンセル' };
+  document.getElementById('modalTitle').textContent = `${r.name} 様`;
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-row"><span class="label">日時</span><span class="value">${r.date} ${r.time}</span></div>
+    <div class="modal-row"><span class="label">お席</span><span class="value">${seatNames[r.seat]}</span></div>
+    <div class="modal-row"><span class="label">人数</span><span class="value">${r.people}名</span></div>
+    <div class="modal-row"><span class="label">電話番号</span><span class="value"><a href="tel:${r.phone}" style="color:var(--blue)">${r.phone}</a></span></div>
+    <div class="modal-row"><span class="label">ステータス</span><span class="value">${statusLabels[r.status]}</span></div>
+    ${r.note ? `<div class="modal-note">⚠ ${r.note}</div>` : ''}
+  `;
+  const actions = document.getElementById('modalActions');
+  if (r.status !== 'cancelled') {
+    actions.innerHTML = `
+      <button class="modal-btn confirm" onclick="updateStatus('${r.id}', 'confirmed'); closeModal('detailModal')">✓ 確認済みにする</button>
+      <button class="modal-btn cancel-btn" onclick="confirmCancel('${r.id}')">キャンセル</button>
+    `;
+  } else {
+    actions.innerHTML = `<button class="modal-btn close-btn" onclick="closeModal('detailModal')">閉じる</button>`;
+  }
+  document.getElementById('detailModal').classList.add('open');
+}
+
+function confirmCancel(id) {
+  if (confirm('この予約をキャンセルしますか？')) {
+    updateStatus(id, 'cancelled');
+    closeModal('detailModal');
+  }
+}
+
+function openAddModal() {
+  const today = getTodayStr();
+  document.getElementById('addDate').value = today;
+  document.getElementById('addModal').classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ===== INIT =====
+loadReservations();
+</script>
+</body>
+</html>

@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ご予約 | お席の空き確認</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;500&family=Shippori+Mincho:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1410;
+    --paper: #f5f0e8;
+    --warm: #c8a96e;
+    --muted: #8a7d6e;
+    --line: #d4c9b4;
+    --red: #9b2335;
+    --green: #2d6a4f;
+    --seat-empty: #e8f4ee;
+    --seat-full: #faeaea;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Noto Serif JP', serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(200,169,110,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, rgba(155,35,53,0.06) 0%, transparent 50%);
+  }
+
+  header {
+    text-align: center;
+    padding: 48px 24px 32px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+  }
+  header::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 2px;
+    background: var(--warm);
+    margin: 0 auto 20px;
+  }
+  header h1 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: clamp(1.4rem, 5vw, 2rem);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--ink);
+  }
+  header p {
+    margin-top: 8px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  .container {
+    max-width: 540px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+  }
+
+  /* Step indicator */
+  .steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 36px;
+  }
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    color: var(--muted);
+    background: var(--paper);
+    transition: all 0.3s;
+  }
+  .step.active .step-num {
+    border-color: var(--warm);
+    background: var(--warm);
+    color: white;
+  }
+  .step.done .step-num {
+    border-color: var(--green);
+    background: var(--green);
+    color: white;
+  }
+  .step-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  .step.active .step-label { color: var(--ink); }
+  .step-line {
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+    min-width: 32px;
+    margin: 0 4px;
+    margin-bottom: 20px;
+  }
+
+  /* Cards */
+  .card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 28px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(26,20,16,0.05);
+  }
+  .card-title {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* Date selector */
+  .date-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .day-header {
+    text-align: center;
+    font-size: 0.62rem;
+    color: var(--muted);
+    padding: 4px 0;
+    letter-spacing: 0.04em;
+  }
+  .day-header.sun { color: var(--red); }
+  .day-header.sat { color: #3a6a9b; }
+
+  .date-btn {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    background: none;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 0.78rem;
+    color: var(--ink);
+    transition: all 0.2s;
+    gap: 2px;
+    padding: 2px;
+  }
+  .date-btn:hover:not(:disabled) {
+    border-color: var(--warm);
+    background: rgba(200,169,110,0.08);
+  }
+  .date-btn.selected {
+    background: var(--warm);
+    color: white;
+    border-color: var(--warm);
+  }
+  .date-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  .date-btn.today { font-weight: 600; }
+  .date-btn .dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--green);
+  }
+  .date-btn.full .dot { background: var(--red); }
+  .date-btn.selected .dot { background: white; }
+
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .month-nav button {
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .month-nav button:hover { border-color: var(--warm); color: var(--warm); }
+  .month-nav span {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* Seat selector */
+  .seat-options {
+    display: grid;
+    gap: 10px;
+  }
+  .seat-option {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border: 1.5px solid var(--line);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    gap: 14px;
+  }
+  .seat-option:hover:not(.unavailable) {
+    border-color: var(--warm);
+    background: rgba(200,169,110,0.05);
+  }
+  .seat-option.selected {
+    border-color: var(--warm);
+    background: rgba(200,169,110,0.1);
+  }
+  .seat-option.unavailable {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: #fafafa;
+  }
+  .seat-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+  }
+  .seat-info { flex: 1; }
+  .seat-name {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.06em;
+  }
+  .seat-cap {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .seat-status {
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .seat-status.open { color: var(--green); }
+  .seat-status.full { color: var(--red); }
+
+  /* Time selector */
+  .time-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .time-btn {
+    padding: 10px 6px;
+    text-align: center;
+    border: 1.5px solid var(--line);
+    border-radius: 4px;
+    cursor: pointer;
+    background: none;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 0.82rem;
+    color: var(--ink);
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .time-btn:hover:not(:disabled) {
+    border-color: var(--warm);
+    background: rgba(200,169,110,0.08);
+  }
+  .time-btn.selected {
+    background: var(--warm);
+    color: white;
+    border-color: var(--warm);
+  }
+  .time-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* People selector */
+  .people-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+  }
+  .people-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    background: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    transition: all 0.2s;
+    font-family: monospace;
+  }
+  .people-btn:hover {
+    border-color: var(--warm);
+    color: var(--warm);
+  }
+  .people-count {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 2rem;
+    min-width: 48px;
+    text-align: center;
+  }
+  .people-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  /* Form fields */
+  .field {
+    margin-bottom: 18px;
+  }
+  .field label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .field label span.req {
+    color: var(--red);
+    margin-left: 4px;
+  }
+  .field input, .field textarea, .field select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: #fdfcf8;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 0.88rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field textarea:focus {
+    border-color: var(--warm);
+  }
+  .field textarea {
+    resize: none;
+    height: 80px;
+    line-height: 1.6;
+  }
+
+  /* Summary */
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.85rem;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row .label { color: var(--muted); font-size: 0.75rem; letter-spacing: 0.06em; }
+  .summary-row .value { font-family: 'Shippori Mincho', serif; font-size: 0.95rem; }
+
+  /* Buttons */
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: var(--ink);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    font-family: 'Shippori Mincho', serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.14em;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .btn-primary:hover { background: #2d2520; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 12px;
+    background: none;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .btn-secondary:hover { border-color: var(--muted); color: var(--ink); }
+
+  /* Availability legend */
+  .legend {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 12px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  /* Complete screen */
+  .complete-screen {
+    text-align: center;
+    padding: 40px 0;
+  }
+  .complete-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 1.8rem;
+  }
+  .complete-screen h2 {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1.2rem;
+    letter-spacing: 0.12em;
+    margin-bottom: 12px;
+  }
+  .complete-screen p {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  /* Page sections */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Notice */
+  .notice {
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.7;
+    padding: 12px;
+    background: rgba(200,169,110,0.08);
+    border-left: 2px solid var(--warm);
+    margin-top: 16px;
+  }
+
+  @media (max-width: 400px) {
+    .date-btn { font-size: 0.7rem; }
+    .time-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ご予約</h1>
+  <p>空き状況の確認・ご予約はこちら</p>
+</header>
+
+<div class="container">
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" id="step1"><div class="step-num">1</div><div class="step-label">日程・席</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step2"><div class="step-num">2</div><div class="step-label">お客様情報</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step3"><div class="step-num">3</div><div class="step-label">確認</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step4"><div class="step-num">4</div><div class="step-label">完了</div></div>
+  </div>
+
+  <!-- PAGE 1: Date & Seat -->
+  <div class="page active" id="page1">
+
+    <!-- Calendar -->
+    <div class="card">
+      <div class="card-title">— 日程をお選びください</div>
+      <div class="month-nav">
+        <button onclick="changeMonth(-1)">&#8249;</button>
+        <span id="monthLabel"></span>
+        <button onclick="changeMonth(1)">&#8250;</button>
+      </div>
+      <div class="date-grid" id="calendarGrid"></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>空きあり</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>満席</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--line)"></div>受付外</div>
+      </div>
+    </div>
+
+    <!-- Time -->
+    <div class="card" id="timeCard" style="display:none">
+      <div class="card-title">— 時間帯をお選びください</div>
+      <div class="time-grid" id="timeGrid"></div>
+    </div>
+
+    <!-- Seat -->
+    <div class="card" id="seatCard" style="display:none">
+      <div class="card-title">— お席の種類</div>
+      <div class="seat-options" id="seatOptions"></div>
+    </div>
+
+    <!-- People -->
+    <div class="card" id="peopleCard" style="display:none">
+      <div class="card-title">— 人数</div>
+      <div class="people-selector">
+        <button class="people-btn" onclick="changePeople(-1)">−</button>
+        <div>
+          <div class="people-count" id="peopleCount">2</div>
+          <div class="people-label">名様</div>
+        </div>
+        <button class="people-btn" onclick="changePeople(1)">＋</button>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btn1" onclick="goToPage2()" disabled>次へ — お客様情報の入力</button>
+  </div>
+
+  <!-- PAGE 2: Customer Info -->
+  <div class="page" id="page2">
+    <div class="card">
+      <div class="card-title">— お客様情報</div>
+      <div class="field">
+        <label>お名前<span class="req">*</span></label>
+        <input type="text" id="guestName" placeholder="山田 太郎" oninput="validatePage2()">
+      </div>
+      <div class="field">
+        <label>電話番号<span class="req">*</span></label>
+        <input type="tel" id="guestPhone" placeholder="090-0000-0000" oninput="validatePage2()">
+      </div>
+      <div class="field">
+        <label>アレルギー・ご要望など</label>
+        <textarea id="guestNote" placeholder="アレルギー・お祝い・その他ご要望がございましたらご記入ください"></textarea>
+      </div>
+      <div class="notice">
+        ご予約確認はLINEにてご連絡いたします。<br>
+        前日までのキャンセルはLINEにてご連絡ください。
+      </div>
+    </div>
+    <button class="btn-primary" id="btn2" onclick="goToPage3()" disabled>次へ — 予約内容の確認</button>
+    <button class="btn-secondary" onclick="goToPage1()">← 戻る</button>
+  </div>
+
+  <!-- PAGE 3: Confirm -->
+  <div class="page" id="page3">
+    <div class="card">
+      <div class="card-title">— 予約内容のご確認</div>
+      <div class="summary-row"><span class="label">日程</span><span class="value" id="sumDate">—</span></div>
+      <div class="summary-row"><span class="label">時間</span><span class="value" id="sumTime">—</span></div>
+      <div class="summary-row"><span class="label">席</span><span class="value" id="sumSeat">—</span></div>
+      <div class="summary-row"><span class="label">人数</span><span class="value" id="sumPeople">—</span></div>
+      <div class="summary-row"><span class="label">お名前</span><span class="value" id="sumName">—</span></div>
+      <div class="summary-row"><span class="label">電話番号</span><span class="value" id="sumPhone">—</span></div>
+      <div class="summary-row" id="sumNoteRow" style="display:none"><span class="label">ご要望</span><span class="value" id="sumNote" style="font-size:0.8rem;text-align:right;max-width:60%">—</span></div>
+    </div>
+    <div class="notice" style="margin-bottom:0">
+      上記の内容でよろしければ「予約を送信する」を押してください。<br>
+      後ほどLINEにて確認のご連絡をいたします。
+    </div>
+    <button class="btn-primary" onclick="submitReservation()">予約を送信する</button>
+    <button class="btn-secondary" onclick="goToPage2()">← 戻る</button>
+  </div>
+
+  <!-- PAGE 4: Complete -->
+  <div class="page" id="page4">
+    <div class="card">
+      <div class="complete-screen">
+        <div class="complete-icon">✓</div>
+        <h2>ご予約を受け付けました</h2>
+        <p>
+          ありがとうございます。<br>
+          LINEにて確認のご連絡をいたします。<br><br>
+          キャンセル・変更のご連絡も<br>
+          LINEよりお願いいたします。
+        </p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===== STATE =====
+const state = {
+  currentMonth: new Date(),
+  selectedDate: null,
+  selectedTime: null,
+  selectedSeat: null,
+  people: 2,
+};
+
+// ===== AVAILABILITY (GAS連携) =====
+const availabilityCache = {};
+
+async function fetchAvailability(dateKey) {
+  if (availabilityCache[dateKey] !== undefined) return;
+  try {
+    const res = await fetch(`${GAS_URL}?action=getAvailability&date=${dateKey}`);
+    const data = await res.json();
+    if (data.success) {
+      availabilityCache[dateKey] = data.availability;
+    } else {
+      availabilityCache[dateKey] = null;
+    }
+  } catch {
+    availabilityCache[dateKey] = null;
+  }
+}
+
+// ダミーデータ（GAS未設定時のフォールバック）
+function generateDummyAvailability() {
+  const data = {};
+  const today = new Date();
+  for (let d = 1; d <= 60; d++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + d);
+    const key = formatDateKey(date);
+    // 定休日（月曜）
+    if (date.getDay() === 1) {
+      data[key] = null; // 休業
+      continue;
+    }
+    data[key] = {};
+    const times = ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'];
+    times.forEach(t => {
+      const r = Math.random();
+      data[key][t] = {
+        counter: r > 0.3,
+        table4: r > 0.4,
+        table6: r > 0.5,
+      };
+    });
+  }
+  return data;
+}
+const availability = generateDummyAvailability();
+
+function formatDateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+// ===== CALENDAR =====
+function renderCalendar() {
+  const year = state.currentMonth.getFullYear();
+  const month = state.currentMonth.getMonth();
+  document.getElementById('monthLabel').textContent = `${year}年${month+1}月`;
+
+  const grid = document.getElementById('calendarGrid');
+  grid.innerHTML = '';
+
+  const days = ['日','月','火','水','木','金','土'];
+  const classes = ['sun','','','','','','sat'];
+  days.forEach((d,i) => {
+    const h = document.createElement('div');
+    h.className = `day-header ${classes[i]}`;
+    h.textContent = d;
+    grid.appendChild(h);
+  });
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const maxDate = new Date(today);
+  maxDate.setMonth(today.getMonth() + 1);
+
+  for (let i = 0; i < firstDay; i++) {
+    grid.appendChild(document.createElement('div'));
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d);
+    date.setHours(0,0,0,0);
+    const key = formatDateKey(date);
+    const btn = document.createElement('button');
+    btn.className = 'date-btn';
+    btn.textContent = d;
+
+    const isPast = date < tomorrow;
+    const isTooFar = date > maxDate;
+    const isClosed = availability[key] === null || availability[key] === undefined;
+
+    if (formatDateKey(date) === formatDateKey(today)) btn.classList.add('today');
+
+    if (isPast || isTooFar || isClosed) {
+      btn.disabled = true;
+    } else {
+      // check if any slot available
+      const slots = availability[key];
+      const hasAny = Object.values(slots).some(s => s.counter || s.table4 || s.table6);
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      if (!hasAny) {
+        btn.classList.add('full');
+        btn.disabled = true;
+      }
+      btn.appendChild(dot);
+
+      btn.onclick = () => selectDate(date, btn);
+
+      if (state.selectedDate && formatDateKey(state.selectedDate) === key) {
+        btn.classList.add('selected');
+      }
+    }
+    grid.appendChild(btn);
+  }
+}
+
+function selectDate(date, btn) {
+  state.selectedDate = date;
+  state.selectedTime = null;
+  state.selectedSeat = null;
+  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  renderTimeSlots();
+  document.getElementById('timeCard').style.display = 'block';
+  document.getElementById('seatCard').style.display = 'none';
+  document.getElementById('peopleCard').style.display = 'none';
+  updateBtn1();
+}
+
+function changeMonth(dir) {
+  state.currentMonth.setMonth(state.currentMonth.getMonth() + dir);
+  renderCalendar();
+}
+
+// ===== TIME SLOTS =====
+function renderTimeSlots() {
+  const key = formatDateKey(state.selectedDate);
+  const slots = availability[key];
+  const grid = document.getElementById('timeGrid');
+  grid.innerHTML = '';
+
+  Object.entries(slots).forEach(([time, avail]) => {
+    const btn = document.createElement('button');
+    btn.className = 'time-btn';
+    btn.textContent = time;
+    const hasAny = avail.counter || avail.table4 || avail.table6;
+    if (!hasAny) { btn.disabled = true; btn.textContent += ' 満'; }
+    if (state.selectedTime === time) btn.classList.add('selected');
+    btn.onclick = () => {
+      state.selectedTime = time;
+      state.selectedSeat = null;
+      document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      renderSeats();
+      document.getElementById('seatCard').style.display = 'block';
+      document.getElementById('peopleCard').style.display = 'none';
+      updateBtn1();
+    };
+    grid.appendChild(btn);
+  });
+}
+
+// ===== SEATS =====
+function renderSeats() {
+  const key = formatDateKey(state.selectedDate);
+  const avail = availability[key][state.selectedTime];
+  const container = document.getElementById('seatOptions');
+  container.innerHTML = '';
+
+  const seats = [
+    { id: 'counter', icon: '🪑', name: 'カウンター席', cap: '1〜7名', available: avail.counter },
+    { id: 'table4', icon: '🍽', name: 'テーブル席（4名）', cap: '1〜4名', available: avail.table4 },
+    { id: 'table6', icon: '🍽', name: 'テーブル席（6名）', cap: '1〜6名', available: avail.table6 },
+    { id: 'table_both', icon: '🍽', name: 'テーブル席（両方）', cap: '7〜10名', available: avail.table4 && avail.table6 },
+  ];
+
+  seats.forEach(seat => {
+    const div = document.createElement('div');
+    div.className = `seat-option${!seat.available ? ' unavailable' : ''}${state.selectedSeat === seat.id ? ' selected' : ''}`;
+    div.innerHTML = `
+      <div class="seat-icon">${seat.icon}</div>
+      <div class="seat-info">
+        <div class="seat-name">${seat.name}</div>
+        <div class="seat-cap">${seat.cap}</div>
+      </div>
+      <div class="seat-status ${seat.available ? 'open' : 'full'}">${seat.available ? '◯ 空きあり' : '✕ 満席'}</div>
+    `;
+    if (seat.available) {
+      div.onclick = () => {
+        state.selectedSeat = seat.id;
+        document.querySelectorAll('.seat-option').forEach(s => s.classList.remove('selected'));
+        div.classList.add('selected');
+        document.getElementById('peopleCard').style.display = 'block';
+        updateBtn1();
+        updatePeopleMax();
+      };
+    }
+    container.appendChild(div);
+  });
+}
+
+// ===== PEOPLE =====
+let peopleMax = 7;
+function updatePeopleMax() {
+  if (state.selectedSeat === 'counter') { peopleMax = 7; }
+  else if (state.selectedSeat === 'table4') { peopleMax = 4; }
+  else if (state.selectedSeat === 'table6') { peopleMax = 6; }
+  else if (state.selectedSeat === 'table_both') { peopleMax = 10; }
+  if (state.people > peopleMax) {
+    state.people = peopleMax;
+    document.getElementById('peopleCount').textContent = state.people;
+  }
+}
+function changePeople(dir) {
+  const next = state.people + dir;
+  if (next < 1 || next > peopleMax) return;
+  state.people = next;
+  document.getElementById('peopleCount').textContent = state.people;
+  updateBtn1();
+}
+
+// ===== VALIDATION =====
+function updateBtn1() {
+  const ok = state.selectedDate && state.selectedTime && state.selectedSeat && state.people;
+  document.getElementById('btn1').disabled = !ok;
+}
+
+function validatePage2() {
+  const name = document.getElementById('guestName').value.trim();
+  const phone = document.getElementById('guestPhone').value.trim();
+  document.getElementById('btn2').disabled = !(name && phone);
+}
+
+// ===== NAVIGATION =====
+function showPage(n) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page'+n).classList.add('active');
+  // update steps
+  for (let i = 1; i <= 4; i++) {
+    const s = document.getElementById('step'+i);
+    s.classList.remove('active','done');
+    if (i < n) s.classList.add('done');
+    if (i === n) s.classList.add('active');
+  }
+  window.scrollTo(0, 0);
+}
+
+function goToPage1() { showPage(1); }
+function goToPage2() { showPage(2); }
+
+function goToPage3() {
+  const ym = `${state.selectedDate.getFullYear()}年${state.selectedDate.getMonth()+1}月${state.selectedDate.getDate()}日`;
+  const weekdays = ['日','月','火','水','木','金','土'];
+  const wd = weekdays[state.selectedDate.getDay()];
+  document.getElementById('sumDate').textContent = `${ym}（${wd}）`;
+  document.getElementById('sumTime').textContent = state.selectedTime;
+  const seatNames = { counter: 'カウンター席', table4: 'テーブル席（4名）', table6: 'テーブル席（6名）', table_both: 'テーブル席（両方・最大10名）' };
+  document.getElementById('sumSeat').textContent = seatNames[state.selectedSeat];
+  document.getElementById('sumPeople').textContent = `${state.people}名`;
+  document.getElementById('sumName').textContent = document.getElementById('guestName').value;
+  document.getElementById('sumPhone').textContent = document.getElementById('guestPhone').value;
+  const note = document.getElementById('guestNote').value.trim();
+  if (note) {
+    document.getElementById('sumNoteRow').style.display = 'flex';
+    document.getElementById('sumNote').textContent = note;
+  }
+  showPage(3);
+}
+
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw2Qy3g4dR_NfCV1dCYgK22zMJBFbdFH840aDZ7uv36G1Ep5X-S228Xt56ZSs3g6aSyDA/exec';
+
+async function submitReservation() {
+  const btn = document.querySelector('#page3 .btn-primary');
+  btn.disabled = true;
+  btn.textContent = '送信中...';
+
+  const payload = {
+    action: 'add',
+    date: formatDateKey(state.selectedDate),
+    time: state.selectedTime,
+    seat: state.selectedSeat,
+    people: state.people,
+    name: document.getElementById('guestName').value.trim(),
+    phone: document.getElementById('guestPhone').value.trim(),
+    note: document.getElementById('guestNote').value.trim(),
+  };
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.success) {
+      showPage(4);
+    } else {
+      alert('エラーが発生しました：' + data.error);
+      btn.disabled = false;
+      btn.textContent = '予約を送信する';
+    }
+  } catch (err) {
+    alert('通信エラーが発生しました。もう一度お試しください。');
+    btn.disabled = false;
+    btn.textContent = '予約を送信する';
+  }
+}
+
+// ===== INIT =====
+renderCalendar();
+</script>
+</body>
+</html>
