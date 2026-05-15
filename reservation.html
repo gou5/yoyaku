@@ -637,6 +637,16 @@ const state = {
 
 // ===== AVAILABILITY (GAS連携) =====
 const availabilityCache = {};
+let closedDates = []; // 臨時休業日
+
+async function loadClosedDates() {
+  try {
+    const res = await fetch(`${GAS_URL}?action=getClosedDates`);
+    const data = await res.json();
+    if (data.success) { closedDates = data.dates; }
+  } catch(e) {}
+  renderCalendar();
+}
 
 async function fetchAvailability(dateKey) {
   if (availabilityCache[dateKey] !== undefined) return;
@@ -726,7 +736,7 @@ function renderCalendar() {
 
     const isPast = date < tomorrow;
     const isTooFar = date > maxDate;
-    const isClosed = availability[key] === null || availability[key] === undefined || date.getDay() === 3 || date.getDay() === 4;
+    const isClosed = availability[key] === null || availability[key] === undefined || date.getDay() === 3 || date.getDay() === 4 || closedDates.includes(key);
 
     if (formatDateKey(date) === formatDateKey(today)) btn.classList.add('today');
 
@@ -946,7 +956,7 @@ async function submitReservation() {
 }
 
 // ===== INIT =====
-renderCalendar();
+loadClosedDates();
 </script>
 </body>
 </html>

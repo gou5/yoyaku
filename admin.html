@@ -431,6 +431,7 @@
   <div class="tab" onclick="switchTab('tomorrow', this)">明日</div>
   <div class="tab" onclick="switchTab('week', this)">今週</div>
   <div class="tab" onclick="switchTab('all', this)">一覧</div>
+  <div class="tab" onclick="switchTab('closed', this)">休業日</div>
 </div>
 
 <div class="main">
@@ -477,6 +478,19 @@
   <!-- List view -->
   <div id="listView">
     <div class="reservation-list" id="resList"></div>
+  </div>
+
+  <!-- 休業日ビュー -->
+  <div id="closedView" style="display:none">
+    <div class="seat-map">
+      <h3>— 臨時休業日の設定</h3>
+      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:16px;line-height:1.7">定休日（水・木）以外に休む日を設定します。<br>設定した日はお客様の予約カレンダーで選択できなくなります。</p>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="date" id="closedDateInput" style="flex:1;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:0.85rem;outline:none">
+        <button onclick="addClosedDate()" style="padding:9px 16px;background:var(--accent);color:#0f1117;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:0.8rem;white-space:nowrap">追加</button>
+      </div>
+      <div id="closedList"></div>
+    </div>
   </div>
 
   <!-- Seat map view -->
@@ -790,8 +804,66 @@ function switchTab(tab, el) {
   else if (tab === 'week') { currentDate = new Date(today); }
   else if (tab === 'all') { currentDate = new Date(today); }
   // 週・一覧は日付ナビを隠す
-  document.querySelector('.date-nav').style.display = (tab === 'all') ? 'none' : 'flex';
-  render();
+  document.querySelector('.date-nav').style.display = (tab === 'all' || tab === 'closed') ? 'none' : 'flex';
+  document.querySelector('.stats').style.display = tab === 'closed' ? 'none' : 'grid';
+  document.querySelector('.timeline-header').style.display = tab === 'closed' ? 'none' : 'flex';
+  document.getElementById('listView').style.display = tab === 'closed' ? 'none' : 'block';
+  document.getElementById('mapView').style.display = 'none';
+  document.getElementById('closedView').style.display = tab === 'closed' ? 'block' : 'none';
+  if (tab === 'closed') { loadClosedDates(); } else { render(); }
+}
+
+// ===== 休業日管理 =====
+async function loadClosedDates() {
+  const list = document.getElementById('closedList');
+  list.innerHTML = '<p style="font-size:0.75rem;color:var(--muted)">読み込み中...</p>';
+  try {
+    const res = await fetch(`${GAS_URL}?action=getClosedDates`);
+    const data = await res.json();
+    if (data.success && data.dates.length > 0) {
+      list.innerHTML = '';
+      const sorted = [...data.dates].sort();
+      sorted.forEach(date => {
+        const d = new Date(date + 'T00:00:00');
+        const wdays = ['日','月','火','水','木','金','土'];
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:6px;';
+        div.innerHTML = `
+          <span style="font-size:0.85rem">${d.getMonth()+1}月${d.getDate()}日（${wdays[d.getDay()]}）</span>
+          <button onclick="removeClosedDate('${date}')" style="background:rgba(224,92,92,0.15);color:var(--red);border:1px solid rgba(224,92,92,0.3);border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.72rem;">削除</button>
+        `;
+        list.appendChild(div);
+      });
+    } else {
+      list.innerHTML = '<p style="font-size:0.75rem;color:var(--muted);text-align:center;padding:20px">臨時休業日はありません</p>';
+    }
+  } catch(e) {
+    list.innerHTML = '<p style="font-size:0.75rem;color:var(--red)">読み込みエラー</p>';
+  }
+}
+
+async function addClosedDate() {
+  const date = document.getElementById('closedDateInput').value;
+  if (!date) { alert('日付を選択してください'); return; }
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'addClosedDate', date }),
+    });
+    document.getElementById('closedDateInput').value = '';
+    loadClosedDates();
+  } catch(e) { alert('エラーが発生しました'); }
+}
+
+async function removeClosedDate(date) {
+  if (!confirm('この休業日を削除しますか？')) return;
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'removeClosedDate', date }),
+    });
+    loadClosedDates();
+  } catch(e) { alert('エラーが発生しました'); }
 }
 
 function switchView(view, el) {
