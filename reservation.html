@@ -661,8 +661,8 @@ function generateDummyAvailability() {
     const date = new Date(today);
     date.setDate(today.getDate() + d);
     const key = formatDateKey(date);
-    // 定休日（月曜）
-    if (date.getDay() === 1) {
+    // 定休日（水=3・木=4）
+    if (date.getDay() === 3 || date.getDay() === 4) {
       data[key] = null; // 休業
       continue;
     }
@@ -726,7 +726,7 @@ function renderCalendar() {
 
     const isPast = date < tomorrow;
     const isTooFar = date > maxDate;
-    const isClosed = availability[key] === null || availability[key] === undefined;
+    const isClosed = availability[key] === null || availability[key] === undefined || date.getDay() === 3 || date.getDay() === 4;
 
     if (formatDateKey(date) === formatDateKey(today)) btn.classList.add('today');
 
