@@ -643,7 +643,10 @@ async function loadClosedDates() {
   try {
     const res = await fetch(`${GAS_URL}?action=getClosedDates`);
     const data = await res.json();
-    if (data.success) { closedDates = data.dates; }
+    if (data.success) {
+      // スラッシュ・ハイフンどちらも YYYY-MM-DD 形式に統一
+      closedDates = data.dates.map(d => String(d).replace(/\//g, '-').trim().substring(0, 10));
+    }
   } catch(e) {}
   renderCalendar();
 }

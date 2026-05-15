@@ -486,7 +486,7 @@
       <h3>— 臨時休業日の設定</h3>
       <p style="font-size:0.72rem;color:var(--muted);margin-bottom:16px;line-height:1.7">定休日（水・木）以外に休む日を設定します。<br>設定した日はお客様の予約カレンダーで選択できなくなります。</p>
       <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input type="date" id="closedDateInput" style="flex:1;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:white;font-size:0.85rem;outline:none;cursor:pointer;color-scheme:dark">
+        <input type="date" id="closedDateInput" style="flex:1;padding:9px 12px;background:#2a2d3a;border:1px solid var(--border);border-radius:4px;color:white;font-size:0.85rem;outline:none;cursor:pointer;color-scheme:dark;-webkit-color-scheme:dark">
         <button onclick="addClosedDate()" style="padding:9px 16px;background:var(--accent);color:#0f1117;border:none;border-radius:4px;font-weight:700;cursor:pointer;font-size:0.8rem;white-space:nowrap">追加</button>
       </div>
       <div id="closedList"></div>
@@ -823,14 +823,17 @@ async function loadClosedDates() {
     if (data.success && data.dates.length > 0) {
       list.innerHTML = '';
       const sorted = [...data.dates].sort();
-      sorted.forEach(date => {
-        const d = new Date(date + 'T00:00:00');
+      sorted.forEach(dateRaw => {
+        // スラッシュ・ハイフンどちらでも対応
+        const dateStr = String(dateRaw).replace(/\//g, '-').trim().substring(0, 10);
+        const parts = dateStr.split('-');
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
         const wdays = ['日','月','火','水','木','金','土'];
         const div = document.createElement('div');
         div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:6px;';
         div.innerHTML = `
           <span style="font-size:0.85rem">${d.getMonth()+1}月${d.getDate()}日（${wdays[d.getDay()]}）</span>
-          <button onclick="removeClosedDate('${date}')" style="background:rgba(224,92,92,0.15);color:var(--red);border:1px solid rgba(224,92,92,0.3);border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.72rem;">削除</button>
+          <button onclick="removeClosedDate('${dateStr}')" style="background:rgba(224,92,92,0.15);color:var(--red);border:1px solid rgba(224,92,92,0.3);border-radius:4px;padding:4px 10px;cursor:pointer;font-size:0.72rem;">削除</button>
         `;
         list.appendChild(div);
       });
