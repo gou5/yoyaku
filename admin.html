@@ -578,18 +578,6 @@ let nextId = 1;
 
 // GASから全予約を読み込む
 async function loadReservations() {
-  if (GAS_URL === 'YOUR_GAS_URL') {
-    // GAS未設定時はサンプルデータ
-    reservations = [
-      { id: 'R001', date: getTodayStr(), time: '17:30', seat: 'counter', people: 2, name: '田中 一郎', phone: '090-1234-5678', note: '', status: 'confirmed' },
-      { id: 'R002', date: getTodayStr(), time: '18:00', seat: 'table4', people: 3, name: '佐藤 花子', phone: '080-9876-5432', note: 'お誕生日のお祝いです', status: 'confirmed' },
-      { id: 'R003', date: getTodayStr(), time: '18:30', seat: 'table6', people: 5, name: '鈴木 健太', phone: '070-1111-2222', note: 'えび・かにアレルギー', status: 'pending' },
-      { id: 'R004', date: getTodayStr(), time: '19:00', seat: 'counter', people: 1, name: '高橋 美咲', phone: '090-3333-4444', note: '', status: 'confirmed' },
-      { id: 'R005', date: getTodayStr(), time: '20:00', seat: 'table4', people: 2, name: '伊藤 大輔', phone: '080-5555-6666', note: '', status: 'cancelled' },
-    ];
-    render();
-    return;
-  }
   try {
     document.getElementById('resList').innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><p>読み込み中...</p></div>';
     const res = await fetch(`${GAS_URL}?action=getAll`);
@@ -606,7 +594,6 @@ async function loadReservations() {
 async function updateStatus(id, status) {
   reservations = reservations.map(r => r.id === id ? { ...r, status } : r);
   render();
-  if (GAS_URL === 'YOUR_GAS_URL') return;
   try {
     await fetch(GAS_URL, {
       method: 'POST',
@@ -638,7 +625,6 @@ async function addReservation() {
   closeModal('addModal');
   render();
 
-  if (GAS_URL === 'YOUR_GAS_URL') return;
   try {
     await fetch(GAS_URL, {
       method: 'POST',
