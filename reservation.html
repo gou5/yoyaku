@@ -666,34 +666,7 @@ async function fetchAvailability(dateKey) {
   }
 }
 
-// ダミーデータ（GAS未設定時のフォールバック）
-function generateDummyAvailability() {
-  const data = {};
-  const today = new Date();
-  for (let d = 1; d <= 60; d++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + d);
-    const key = formatDateKey(date);
-    // 定休日（水=3・木=4）
-    if (date.getDay() === 3 || date.getDay() === 4) {
-      data[key] = null; // 休業
-      continue;
-    }
-    data[key] = {};
-    const times = ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'];
-    times.forEach(t => {
-      const r = Math.random();
-      data[key][t] = {
-        counter: r > 0.3,
-        table4: r > 0.4,
-        table6: r > 0.5,
-      };
-    });
-  }
-  return data;
-}
-const availability = generateDummyAvailability();
-
+// ダミーデータは廃止
 function formatDateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
@@ -739,24 +712,29 @@ function renderCalendar() {
 
     const isPast = date < tomorrow;
     const isTooFar = date > maxDate;
-    const isClosed = availability[key] === null || availability[key] === undefined || date.getDay() === 3 || date.getDay() === 4 || closedDates.includes(key);
+    const isWeeklyOff = date.getDay() === 3 || date.getDay() === 4;
+    const isTempClosed = closedDates.includes(key);
 
     if (formatDateKey(date) === formatDateKey(today)) btn.classList.add('today');
 
-    if (isPast || isTooFar || isClosed) {
+    if (isPast || isTooFar || isWeeklyOff || isTempClosed) {
       btn.disabled = true;
     } else {
-      // check if any slot available
-      const slots = availability[key];
-      const hasAny = Object.values(slots).some(s => s.counter || s.table4 || s.table6);
+      // GASから取得済みなら空き判定
+      const avail = availabilityCache[key];
       const dot = document.createElement('div');
       dot.className = 'dot';
-      if (!hasAny) {
-        btn.classList.add('full');
-        btn.disabled = true;
-      }
-      btn.appendChild(dot);
 
+      if (avail !== undefined) {
+        // キャッシュあり
+        const hasAny = avail && Object.values(avail).some(s => s.counter || s.table4 || s.table6);
+        if (!hasAny) {
+          btn.classList.add('full');
+          btn.disabled = true;
+        }
+      }
+      // キャッシュなし→空きありとして表示（日付タップ時に取得）
+      btn.appendChild(dot);
       btn.onclick = () => selectDate(date, btn);
 
       if (state.selectedDate && formatDateKey(state.selectedDate) === key) {
@@ -767,12 +745,22 @@ function renderCalendar() {
   }
 }
 
-function selectDate(date, btn) {
+async function selectDate(date, btn) {
   state.selectedDate = date;
   state.selectedTime = null;
   state.selectedSeat = null;
   document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
+
+  // GASから空き情報を取得
+  const key = formatDateKey(date);
+  if (availabilityCache[key] === undefined) {
+    document.getElementById('timeCard').style.display = 'block';
+    document.getElementById('timeGrid').innerHTML = '<p style="text-align:center;color:#8a7d6e;font-size:0.8rem;padding:12px">読み込み中...</p>';
+    await fetchAvailability(key);
+    renderCalendar(); // 満席判定を更新
+  }
+
   renderTimeSlots();
   document.getElementById('timeCard').style.display = 'block';
   document.getElementById('seatCard').style.display = 'none';
@@ -788,9 +776,14 @@ function changeMonth(dir) {
 // ===== TIME SLOTS =====
 function renderTimeSlots() {
   const key = formatDateKey(state.selectedDate);
-  const slots = availability[key];
+  const slots = availabilityCache[key];
   const grid = document.getElementById('timeGrid');
   grid.innerHTML = '';
+
+  if (!slots) {
+    grid.innerHTML = '<p style="text-align:center;color:#8a7d6e;font-size:0.8rem;padding:12px">空き情報を取得できませんでした</p>';
+    return;
+  }
 
   Object.entries(slots).forEach(([time, avail]) => {
     const btn = document.createElement('button');
@@ -816,9 +809,11 @@ function renderTimeSlots() {
 // ===== SEATS =====
 function renderSeats() {
   const key = formatDateKey(state.selectedDate);
-  const avail = availability[key][state.selectedTime];
+  const avail = availabilityCache[key] && availabilityCache[key][state.selectedTime];
   const container = document.getElementById('seatOptions');
   container.innerHTML = '';
+
+  if (!avail) return;
 
   const seats = [
     { id: 'counter', icon: '🪑', name: 'カウンター席', cap: '1〜7名', available: avail.counter },
