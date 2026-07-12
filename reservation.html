@@ -575,6 +575,10 @@
         <input type="tel" id="guestPhone" placeholder="090-0000-0000" oninput="validatePage2()">
       </div>
       <div class="field">
+        <label>メールアドレス <span style="font-size:0.65rem;color:#8a7d6e">（任意・確認メールを送ります）</span></label>
+        <input type="email" id="guestEmail" placeholder="example@gmail.com">
+      </div>
+      <div class="field">
         <label>アレルギー・ご要望など</label>
         <textarea id="guestNote" placeholder="アレルギー・お祝い・その他ご要望がございましたらご記入ください"></textarea>
       </div>
@@ -930,6 +934,7 @@ async function submitReservation() {
     people: state.people,
     name: document.getElementById('guestName').value.trim(),
     phone: document.getElementById('guestPhone').value.trim(),
+    email: document.getElementById('guestEmail').value.trim(),
     note: document.getElementById('guestNote').value.trim(),
   };
 
