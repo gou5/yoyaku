@@ -821,8 +821,8 @@ function renderSeats() {
 
   const seats = [
     { id: 'counter', icon: '🪑', name: 'カウンター席', cap: '1〜7名', available: avail.counter },
-    { id: 'table4', icon: '🍽', name: 'テーブル席（4名）', cap: '1〜4名', available: avail.table4 },
-    { id: 'table6', icon: '🍽', name: 'テーブル席（6名）', cap: '1〜6名', available: avail.table6 },
+    { id: 'table4', icon: '🍽', name: 'テーブル席（4名）', cap: '3〜4名', available: avail.table4 },
+    { id: 'table6', icon: '🍽', name: 'テーブル席（6名）', cap: '4〜6名', available: avail.table6 },
     { id: 'table_both', icon: '🍽', name: 'テーブル席（両方）', cap: '7〜10名', available: avail.table4 && avail.table6 },
   ];
 
@@ -853,19 +853,19 @@ function renderSeats() {
 
 // ===== PEOPLE =====
 let peopleMax = 7;
+let peopleMin = 1;
 function updatePeopleMax() {
-  if (state.selectedSeat === 'counter') { peopleMax = 7; }
-  else if (state.selectedSeat === 'table4') { peopleMax = 4; }
-  else if (state.selectedSeat === 'table6') { peopleMax = 6; }
-  else if (state.selectedSeat === 'table_both') { peopleMax = 10; }
-  if (state.people > peopleMax) {
-    state.people = peopleMax;
-    document.getElementById('peopleCount').textContent = state.people;
-  }
+  if (state.selectedSeat === 'counter') { peopleMin = 1; peopleMax = 7; }
+  else if (state.selectedSeat === 'table4') { peopleMin = 3; peopleMax = 4; }
+  else if (state.selectedSeat === 'table6') { peopleMin = 4; peopleMax = 6; }
+  else if (state.selectedSeat === 'table_both') { peopleMin = 7; peopleMax = 10; }
+  if (state.people > peopleMax) { state.people = peopleMax; }
+  if (state.people < peopleMin) { state.people = peopleMin; }
+  document.getElementById('peopleCount').textContent = state.people;
 }
 function changePeople(dir) {
   const next = state.people + dir;
-  if (next < 1 || next > peopleMax) return;
+  if (next < peopleMin || next > peopleMax) return;
   state.people = next;
   document.getElementById('peopleCount').textContent = state.people;
   updateBtn1();
