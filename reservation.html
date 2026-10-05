@@ -700,7 +700,7 @@ function renderCalendar() {
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
   const maxDate = new Date(today);
-  maxDate.setMonth(today.getMonth() + 1);
+  maxDate.setFullYear(today.getFullYear() + 10); // 実質期限なし
 
   for (let i = 0; i < firstDay; i++) {
     grid.appendChild(document.createElement('div'));
@@ -715,7 +715,7 @@ function renderCalendar() {
     btn.textContent = d;
 
     const isPast = date < tomorrow;
-    const isTooFar = date > maxDate;
+    const isTooFar = false; // 期限なし
     const isWeeklyOff = date.getDay() === 3 || date.getDay() === 4;
     const isTempClosed = closedDates.includes(key);
 
