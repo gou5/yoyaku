@@ -920,6 +920,7 @@ function goToPage3() {
 }
 
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbw2Qy3g4dR_NfCV1dCYgK22zMJBFbdFH840aDZ7uv36G1Ep5X-S228Xt56ZSs3g6aSyDA/exec';
+const SOURCE = new URLSearchParams(window.location.search).get('from') || '不明';
 
 async function submitReservation() {
   const btn = document.querySelector('#page3 .btn-primary');
@@ -936,6 +937,7 @@ async function submitReservation() {
     phone: document.getElementById('guestPhone').value.trim(),
     email: document.getElementById('guestEmail').value.trim(),
     note: document.getElementById('guestNote').value.trim(),
+    source: SOURCE,
   };
 
   try {
