@@ -611,19 +611,50 @@
     <button class="btn-secondary" onclick="goToPage2()">← 戻る</button>
   </div>
 
+  <!-- PAGE 0: LINE登録促進（LINE以外の流入元のみ表示） -->
+  <div class="page" id="page0">
+    <div class="card">
+      <div class="complete-screen">
+        <div class="complete-icon" style="border-color:#06c755;font-size:2rem">💬</div>
+        <h2>ご予約の前に</h2>
+        <p style="text-align:left;font-size:0.82rem;line-height:2">
+          ご予約の確認は<strong>LINE</strong>にてご連絡いたします。<br>
+          必ず事前にLINE登録をお済ませください。
+        </p>
+      </div>
+      <a href="https://line.me/R/ti/p/@757vbcor" target="_blank"
+        style="display:block;width:100%;padding:14px;background:#06c755;color:white;border:none;border-radius:3px;font-family:'Shippori Mincho',serif;font-size:0.9rem;letter-spacing:0.14em;cursor:pointer;text-align:center;text-decoration:none;margin-top:8px;box-sizing:border-box">
+        LINEを登録する
+      </a>
+      <button class="btn-secondary" onclick="loadClosedDates();showPage(1)" style="margin-top:10px">
+        登録済みの方はこちら →
+      </button>
+    </div>
+  </div>
+
   <!-- PAGE 4: Complete -->
   <div class="page" id="page4">
     <div class="card">
       <div class="complete-screen">
         <div class="complete-icon">✓</div>
         <h2>ご予約を受け付けました</h2>
-        <p>
+        <p id="completeMsg">
           ありがとうございます。<br>
           LINEにて確認のご連絡をいたします。<br><br>
           キャンセル・変更のご連絡も<br>
           LINEよりお願いいたします。
         </p>
       </div>
+    </div>
+    <div id="lineSendBlock" style="display:none">
+      <div class="notice" style="margin-bottom:12px">
+        LINEアプリが開きます。そのまま送信してください。<br>
+        送信いただくことで予約が確定します。
+      </div>
+      <a id="lineSendBtn" href="#" target="_blank"
+        style="display:block;width:100%;padding:14px;background:#06c755;color:white;border:none;border-radius:3px;font-family:'Shippori Mincho',serif;font-size:0.9rem;letter-spacing:0.14em;cursor:pointer;text-align:center;text-decoration:none;box-sizing:border-box">
+        LINEで送信する
+      </a>
     </div>
   </div>
 
@@ -947,6 +978,21 @@ async function submitReservation() {
     });
     const data = await res.json();
     if (data.success) {
+      // LINEボタンを設定
+      const name = document.getElementById('guestName').value.trim();
+      const lineMsg = encodeURIComponent(`予約しました（${name}）`);
+      const lineUrl = `https://line.me/R/oaMessage/@757vbcor/?${lineMsg}`;
+      document.getElementById('lineSendBtn').href = lineUrl;
+      document.getElementById('lineSendBlock').style.display = 'block';
+      // LINE経由の場合はメッセージを変える
+      if (SOURCE === 'line') {
+        document.getElementById('completeMsg').innerHTML = `
+          ありがとうございます。<br>
+          LINEにて確認のご連絡をいたします。<br><br>
+          キャンセル・変更のご連絡も<br>
+          LINEよりお願いいたします。
+        `;
+      }
       showPage(4);
     } else {
       alert('エラーが発生しました：' + data.error);
@@ -961,7 +1007,16 @@ async function submitReservation() {
 }
 
 // ===== INIT =====
-loadClosedDates();
+// LINE以外の流入元はpage0（LINE登録促進）を表示
+if (SOURCE !== 'line' && SOURCE !== '不明') {
+  showPage(0);
+} else {
+  loadClosedDates();
+}
+
+function startReservation() {
+  loadClosedDates();
+}
 </script>
 </body>
 </html>
