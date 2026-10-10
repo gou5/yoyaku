@@ -638,15 +638,7 @@
       <div class="complete-screen">
         <div class="complete-icon">✓</div>
         <h2>ご予約を受け付けました</h2>
-        <p id="completeMsg">
-          ありがとうございます。<br>
-          LINEにて確認のご連絡をいたします。<br><br>
-          キャンセル・変更のご連絡も<br>
-          LINEよりお願いいたします。
-        </p>
       </div>
-    </div>
-    <div id="lineSendBlock" style="display:none">
       <div class="notice" style="margin-bottom:12px">
         LINEアプリが開きます。そのまま送信してください。<br>
         送信いただくことで予約が確定します。
@@ -978,21 +970,24 @@ async function submitReservation() {
     });
     const data = await res.json();
     if (data.success) {
-      // LINEボタンを設定
+      // LINEメッセージに予約内容を含める
       const name = document.getElementById('guestName').value.trim();
-      const lineMsg = encodeURIComponent(`予約しました（${name}）`);
+      const phone = document.getElementById('guestPhone').value.trim();
+      const seatNames = { counter: 'カウンター席', table4: 'テーブル席（4名）', table6: 'テーブル席（6名）', table_both: 'テーブル席（両方）' };
+      const weekdays = ['日','月','火','水','木','金','土'];
+      const d = state.selectedDate;
+      const dateStr = `${d.getMonth()+1}月${d.getDate()}日（${weekdays[d.getDay()]}）`;
+      const lineMsg = encodeURIComponent(
+        `【予約内容】\n` +
+        `氏名：${name}\n` +
+        `電話：${phone}\n` +
+        `日付：${dateStr}\n` +
+        `時間：${state.selectedTime}\n` +
+        `席：${seatNames[state.selectedSeat]}\n` +
+        `人数：${state.people}名`
+      );
       const lineUrl = `https://line.me/R/oaMessage/@757vbcor/?${lineMsg}`;
       document.getElementById('lineSendBtn').href = lineUrl;
-      document.getElementById('lineSendBlock').style.display = 'block';
-      // LINE経由の場合はメッセージを変える
-      if (SOURCE === 'line') {
-        document.getElementById('completeMsg').innerHTML = `
-          ありがとうございます。<br>
-          LINEにて確認のご連絡をいたします。<br><br>
-          キャンセル・変更のご連絡も<br>
-          LINEよりお願いいたします。
-        `;
-      }
       showPage(4);
     } else {
       alert('エラーが発生しました：' + data.error);
