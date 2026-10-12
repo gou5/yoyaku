@@ -583,7 +583,25 @@ async function loadReservations() {
     const res = await fetch(`${GAS_URL}?action=getAll`);
     const data = await res.json();
     if (data.success) {
-      reservations = data.reservations;
+      reservations = data.reservations.map(r => ({
+        ...r,
+        // 日付をYYYY-MM-DD形式に統一
+        date: (() => {
+          const d = String(r.date).replace(/\//g, '-').trim();
+          if (d.includes('T')) {
+            // ISO形式（2026-10-12T15:00:00.000Z）の場合
+            const dt = new Date(d);
+            return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+          }
+          return d.substring(0, 10);
+        })(),
+        // 時間をHH:MM形式に統一
+        time: (() => {
+          const t = String(r.time);
+          if (t.includes(':')) return t.substring(0, 5);
+          return t;
+        })(),
+      }));
     }
   } catch (e) {
     console.error('読み込みエラー', e);
@@ -616,6 +634,7 @@ async function addReservation() {
     name, phone,
     note: document.getElementById('addNote').value.trim(),
     status: 'confirmed',
+    source: '電話',
   };
   reservations.push(newRes);
 
