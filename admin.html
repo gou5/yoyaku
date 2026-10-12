@@ -513,6 +513,65 @@
   </div>
 </div>
 
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal" onclick="closeModal('editModal')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-height:85vh;overflow-y:auto;padding-bottom:24px">
+    <div class="modal-handle"></div>
+    <h2>予約を編集</h2>
+    <input type="hidden" id="editId">
+    <div class="form-row">
+      <div class="form-field">
+        <label>日付</label>
+        <input type="date" id="editDate" style="color-scheme:dark">
+      </div>
+      <div class="form-field">
+        <label>時間</label>
+        <select id="editTime">
+          <option>17:00</option><option>17:30</option>
+          <option>18:00</option><option>18:30</option>
+          <option>19:00</option><option>19:30</option>
+          <option>20:00</option><option>20:30</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>お席</label>
+        <select id="editSeat">
+          <option value="counter">カウンター</option>
+          <option value="table4">テーブル4名</option>
+          <option value="table6">テーブル6名</option>
+          <option value="table_both">テーブル両方</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>人数</label>
+        <select id="editPeople">
+          <option>1</option><option>2</option><option>3</option>
+          <option>4</option><option>5</option><option>6</option>
+          <option>7</option><option>8</option><option>9</option><option>10</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-field">
+      <label>お名前</label>
+      <input type="text" id="editName">
+    </div>
+    <div class="form-field">
+      <label>電話番号</label>
+      <input type="tel" id="editPhone">
+    </div>
+    <div class="form-field">
+      <label>メモ・ご要望</label>
+      <textarea id="editNote" style="resize:none;height:70px"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn confirm" onclick="saveEdit()">保存する</button>
+      <button class="modal-btn close-btn" onclick="closeModal('editModal')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add Modal -->
 <div class="modal-overlay" id="addModal" onclick="closeModal('addModal')">
   <div class="modal" onclick="event.stopPropagation()" style="max-height:85vh;overflow-y:auto;padding-bottom:24px">
@@ -897,7 +956,8 @@ function openDetailModal(r) {
   const actions = document.getElementById('modalActions');
   if (r.status !== 'cancelled') {
     actions.innerHTML = `
-      <button class="modal-btn confirm" onclick="updateStatus('${r.id}', 'confirmed'); closeModal('detailModal')">✓ 確認済みにする</button>
+      <button class="modal-btn confirm" onclick="updateStatus('${r.id}', 'confirmed'); closeModal('detailModal')">✓ 確認済み</button>
+      <button class="modal-btn close-btn" onclick="openEditModal('${r.id}'); closeModal('detailModal')">✏ 編集</button>
       <button class="modal-btn cancel-btn" onclick="confirmCancel('${r.id}')">キャンセル</button>
     `;
   } else {
@@ -911,6 +971,47 @@ function confirmCancel(id) {
     updateStatus(id, 'cancelled');
     closeModal('detailModal');
   }
+}
+
+function openEditModal(id) {
+  const r = reservations.find(r => r.id === id);
+  if (!r) return;
+  document.getElementById('editId').value = r.id;
+  document.getElementById('editDate').value = r.date;
+  document.getElementById('editTime').value = r.time;
+  document.getElementById('editSeat').value = r.seat;
+  document.getElementById('editPeople').value = r.people;
+  document.getElementById('editName').value = r.name;
+  document.getElementById('editPhone').value = r.phone;
+  document.getElementById('editNote').value = r.note || '';
+  document.getElementById('editModal').classList.add('open');
+}
+
+async function saveEdit() {
+  const id = document.getElementById('editId').value;
+  const updated = {
+    date: document.getElementById('editDate').value,
+    time: document.getElementById('editTime').value,
+    seat: document.getElementById('editSeat').value,
+    people: parseInt(document.getElementById('editPeople').value),
+    name: document.getElementById('editName').value.trim(),
+    phone: document.getElementById('editPhone').value.trim(),
+    note: document.getElementById('editNote').value.trim(),
+  };
+  if (!updated.name || !updated.phone) { alert('お名前と電話番号を入力してください'); return; }
+
+  // ローカルを更新
+  reservations = reservations.map(r => r.id === id ? { ...r, ...updated } : r);
+  closeModal('editModal');
+  render();
+
+  // GASに送信
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'edit', id, ...updated }),
+    });
+  } catch(e) { console.error(e); }
 }
 
 function openAddModal() {
