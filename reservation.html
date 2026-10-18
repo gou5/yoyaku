@@ -510,9 +510,7 @@
     <div class="step-line"></div>
     <div class="step" id="step2"><div class="step-num">2</div><div class="step-label">お客様情報</div></div>
     <div class="step-line"></div>
-    <div class="step" id="step3"><div class="step-num">3</div><div class="step-label">確認</div></div>
-    <div class="step-line"></div>
-    <div class="step" id="step4"><div class="step-num">4</div><div class="step-label">完了</div></div>
+    <div class="step" id="step3"><div class="step-num">3</div><div class="step-label">確認・送信</div></div>
   </div>
 
   <!-- PAGE 1: Date & Seat -->
@@ -604,10 +602,10 @@
       <div class="summary-row" id="sumNoteRow" style="display:none"><span class="label">ご要望</span><span class="value" id="sumNote" style="font-size:0.8rem;text-align:right;max-width:60%">—</span></div>
     </div>
     <div class="notice" style="margin-bottom:0">
-      上記の内容でよろしければ「予約を送信する」を押してください。<br>
-      後ほどLINEにて確認のご連絡をいたします。
+      上記の内容でよろしければ下のボタンを押してください。<br>
+      LINEアプリが開きますので、そのまま送信してください。
     </div>
-    <button class="btn-primary" onclick="submitReservation()">予約を送信する</button>
+    <button class="btn-primary" id="btnSubmit" onclick="submitAndLine()">LINEで予約を送信する</button>
     <button class="btn-secondary" onclick="goToPage2()">← 戻る</button>
   </div>
 
@@ -906,8 +904,9 @@ function showPage(n) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page'+n).classList.add('active');
   // update steps
-  for (let i = 1; i <= 4; i++) {
+  for (let i = 1; i <= 3; i++) {
     const s = document.getElementById('step'+i);
+    if (!s) continue;
     s.classList.remove('active','done');
     if (i < n) s.classList.add('done');
     if (i === n) s.classList.add('active');
@@ -939,6 +938,59 @@ function goToPage3() {
 
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbw2Qy3g4dR_NfCV1dCYgK22zMJBFbdFH840aDZ7uv36G1Ep5X-S228Xt56ZSs3g6aSyDA/exec';
 const SOURCE = new URLSearchParams(window.location.search).get('from') || '不明';
+
+async function submitAndLine() {
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = true;
+  btn.textContent = '送信中...';
+
+  const name = document.getElementById('guestName').value.trim();
+  const phone = document.getElementById('guestPhone').value.trim();
+  const seatNames = { counter: 'カウンター席', table4: 'テーブル席（4名）', table6: 'テーブル席（6名）', table_both: 'テーブル席（両方）' };
+  const weekdays = ['日','月','火','水','木','金','土'];
+  const d = state.selectedDate;
+  const dateStr = `${d.getMonth()+1}月${d.getDate()}日（${weekdays[d.getDay()]}）`;
+
+  const payload = {
+    action: 'add',
+    date: formatDateKey(state.selectedDate),
+    time: state.selectedTime,
+    seat: state.selectedSeat,
+    people: state.people,
+    name,
+    phone,
+    email: document.getElementById('guestEmail').value.trim(),
+    note: document.getElementById('guestNote').value.trim(),
+    source: SOURCE,
+  };
+
+  // LINEメッセージ
+  const lineMsg = encodeURIComponent(
+    `【予約内容】\n` +
+    `氏名：${name}\n` +
+    `電話：${phone}\n` +
+    `日付：${dateStr}\n` +
+    `時間：${state.selectedTime}\n` +
+    `席：${seatNames[state.selectedSeat]}\n` +
+    `人数：${state.people}名`
+  );
+  const lineUrl = `https://line.me/R/oaMessage/@757vbcor/?${lineMsg}`;
+
+  // スプレッドシートへ送信とLINE起動を同時に
+  window.open(lineUrl, '_blank');
+
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  } catch(err) {
+    console.error(err);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'LINEで予約を送信する';
+}
 
 async function submitReservation() {
   const btn = document.querySelector('#page3 .btn-primary');
