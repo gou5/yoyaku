@@ -373,6 +373,12 @@
   .field input:focus, .field textarea:focus {
     border-color: var(--warm);
   }
+  .contact-choice { display:flex; flex-direction:column; gap:8px; }
+  .contact-opt { display:flex !important; align-items:flex-start; gap:10px; padding:12px 14px; border:1px solid #d9cfc2; border-radius:3px; cursor:pointer; background:#fff; letter-spacing:normal !important; }
+  .contact-opt input { margin-top:4px; width:auto !important; }
+  .contact-opt strong { display:block; font-size:0.9rem; color:var(--ink); }
+  .contact-opt small { display:block; font-size:0.72rem; color:#8a7d6e; margin-top:2px; }
+  .contact-opt:has(input:checked) { border-color:var(--ink); background:#faf7f2; }
   .field textarea {
     resize: none;
     height: 80px;
@@ -573,16 +579,22 @@
         <input type="tel" id="guestPhone" placeholder="090-0000-0000" oninput="validatePage2()">
       </div>
       <div class="field">
-        <label>メールアドレス <span style="font-size:0.65rem;color:#8a7d6e">（任意・確認メールを送ります）</span></label>
-        <input type="email" id="guestEmail" placeholder="example@gmail.com">
+        <label>ご予約確認の受け取り方<span class="req">*</span></label>
+        <div class="contact-choice">
+          <label class="contact-opt"><input type="radio" name="contactWay" value="line" onchange="onContactWay()"> <span><strong>LINEで受け取る</strong><small>予約後にLINEで内容を送っていただきます</small></span></label>
+          <label class="contact-opt"><input type="radio" name="contactWay" value="mail" onchange="onContactWay()"> <span><strong>メールで受け取る</strong><small>確認メールをお送りします</small></span></label>
+        </div>
+      </div>
+      <div class="field" id="emailField" style="display:none">
+        <label>メールアドレス<span class="req">*</span></label>
+        <input type="email" id="guestEmail" placeholder="example@gmail.com" oninput="validatePage2()">
       </div>
       <div class="field">
         <label>アレルギー・ご要望など</label>
         <textarea id="guestNote" placeholder="アレルギー・お祝い・その他ご要望がございましたらご記入ください"></textarea>
       </div>
       <div class="notice">
-        ご予約確認はLINEにてご連絡いたします。<br>
-        前日までのキャンセルはLINEにてご連絡ください。
+        キャンセル・変更は、お電話（0566-91-6090）またはLINEでご連絡ください。
       </div>
     </div>
     <button class="btn-primary" id="btn2" onclick="goToPage3()" disabled>次へ — 予約内容の確認</button>
@@ -599,13 +611,13 @@
       <div class="summary-row"><span class="label">人数</span><span class="value" id="sumPeople">—</span></div>
       <div class="summary-row"><span class="label">お名前</span><span class="value" id="sumName">—</span></div>
       <div class="summary-row"><span class="label">電話番号</span><span class="value" id="sumPhone">—</span></div>
+      <div class="summary-row"><span class="label">確認の受け取り方</span><span class="value" id="sumWay">—</span></div>
       <div class="summary-row" id="sumNoteRow" style="display:none"><span class="label">ご要望</span><span class="value" id="sumNote" style="font-size:0.8rem;text-align:right;max-width:60%">—</span></div>
     </div>
     <div class="notice" style="margin-bottom:0">
-      上記の内容でよろしければ下のボタンを押してください。<br>
-      LINEアプリが開きますので、そのまま送信してください。
+      上記の内容でよろしければ、下のボタンを押してください。
     </div>
-    <button class="btn-primary" id="btnSubmit" onclick="submitAndLine()">LINEで予約を送信する</button>
+    <button class="btn-primary" id="btnSubmit" onclick="submitReservation()">この内容で予約する</button>
     <button class="btn-secondary" onclick="goToPage2()">← 戻る</button>
   </div>
 
@@ -633,14 +645,18 @@
   <!-- PAGE 4: Complete -->
   <div class="page" id="page4">
     <div class="card">
-      <div class="notice" style="margin-bottom:12px">
-        LINEアプリが開きます。そのまま送信してください。<br>
-        送信いただくことで予約が確定します。
+      <div class="complete-screen">
+        <div class="complete-icon">✓</div>
+        <h2>ご予約を受け付けました</h2>
+        <p id="completeMsg" style="font-size:0.82rem;line-height:2"></p>
       </div>
-      <a id="lineSendBtn" href="#" target="_blank"
-        style="display:block;width:100%;padding:14px;background:#06c755;color:white;border:none;border-radius:3px;font-family:'Shippori Mincho',serif;font-size:0.9rem;letter-spacing:0.14em;cursor:pointer;text-align:center;text-decoration:none;box-sizing:border-box">
-        LINEで予約を送信する
+      <a id="lineSendBtn" href="#" target="_blank" style="display:none"
+        data-style="display:block;width:100%;padding:14px;background:#06c755;color:white;border:none;border-radius:3px;font-family:'Shippori Mincho',serif;font-size:0.9rem;letter-spacing:0.14em;cursor:pointer;text-align:center;text-decoration:none;box-sizing:border-box">
+        LINEで予約内容を送る
       </a>
+      <p id="lineHelp" style="display:none;font-size:0.72rem;color:#8a7d6e;line-height:1.8;margin-top:10px">
+        LINEが開いたら、そのまま送信してください。友だち追加がまだの方は、開いた画面で友だち追加してから送信してください。
+      </p>
     </div>
   </div>
 
@@ -893,10 +909,23 @@ function updateBtn1() {
   document.getElementById('btn1').disabled = !ok;
 }
 
+function getContactWay() {
+  const r = document.querySelector('input[name=contactWay]:checked');
+  return r ? r.value : '';
+}
+
+function onContactWay() {
+  document.getElementById('emailField').style.display = getContactWay() === 'mail' ? 'block' : 'none';
+  validatePage2();
+}
+
 function validatePage2() {
   const name = document.getElementById('guestName').value.trim();
   const phone = document.getElementById('guestPhone').value.trim();
-  document.getElementById('btn2').disabled = !(name && phone);
+  const way = getContactWay();
+  const email = document.getElementById('guestEmail').value.trim();
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  document.getElementById('btn2').disabled = !(name && phone && (way === 'line' || (way === 'mail' && emailOk)));
 }
 
 // ===== NAVIGATION =====
@@ -928,6 +957,7 @@ function goToPage3() {
   document.getElementById('sumPeople').textContent = `${state.people}名`;
   document.getElementById('sumName').textContent = document.getElementById('guestName').value;
   document.getElementById('sumPhone').textContent = document.getElementById('guestPhone').value;
+  document.getElementById('sumWay').textContent = getContactWay() === 'line' ? 'LINE' : 'メール（' + document.getElementById('guestEmail').value.trim() + '）';
   const note = document.getElementById('guestNote').value.trim();
   if (note) {
     document.getElementById('sumNoteRow').style.display = 'flex';
@@ -1005,8 +1035,8 @@ async function submitReservation() {
     people: state.people,
     name: document.getElementById('guestName').value.trim(),
     phone: document.getElementById('guestPhone').value.trim(),
-    email: document.getElementById('guestEmail').value.trim(),
-    note: document.getElementById('guestNote').value.trim(),
+    email: getContactWay() === 'mail' ? document.getElementById('guestEmail').value.trim() : '',
+    note: ('【確認方法】' + (getContactWay() === 'line' ? 'LINE' : 'メール') + ' ' + document.getElementById('guestNote').value.trim()).trim(),
     source: SOURCE,
   };
 
@@ -1034,12 +1064,24 @@ async function submitReservation() {
         `人数：${state.people}名`
       );
       const lineUrl = `https://line.me/R/oaMessage/@757vbcor/?${lineMsg}`;
-      document.getElementById('lineSendBtn').href = lineUrl;
+      const lb = document.getElementById('lineSendBtn');
+      lb.href = lineUrl;
+      if (getContactWay() === 'line') {
+        lb.setAttribute('style', lb.getAttribute('data-style'));
+        document.getElementById('lineHelp').style.display = 'block';
+        document.getElementById('completeMsg').innerHTML = '下のボタンからLINEで予約内容を送ってください。<br>送っていただいた内容に、LINEで確認のご連絡をいたします。';
+      } else {
+        const em = document.getElementById('guestEmail').value.trim();
+        document.getElementById('completeMsg').textContent = '';
+        document.getElementById('completeMsg').append('確認メールを ' + em + ' にお送りしました。', document.createElement('br'), '届かない場合は、迷惑メールフォルダをご確認ください。');
+      }
       showPage(4);
+      btn.disabled = false;
+      btn.textContent = 'この内容で予約する';
     } else {
       alert('エラーが発生しました：' + data.error);
       btn.disabled = false;
-      btn.textContent = '予約を送信する';
+      btn.textContent = 'この内容で予約する';
     }
   } catch (err) {
     alert('通信エラーが発生しました。もう一度お試しください。');
@@ -1050,11 +1092,8 @@ async function submitReservation() {
 
 // ===== INIT =====
 // LINE以外の流入元はpage0（LINE登録促進）を表示
-if (SOURCE !== 'line' && SOURCE !== '不明') {
-  showPage(0);
-} else {
-  loadClosedDates();
-}
+// LINE登録はお客様の任意にする（最初の「LINE登録」画面は出さない）
+loadClosedDates();
 
 function startReservation() {
   loadClosedDates();
