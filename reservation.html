@@ -646,8 +646,8 @@
   <div class="page" id="page4">
     <div class="card">
       <div class="complete-screen">
-        <div class="complete-icon">✓</div>
-        <h2>ご予約を受け付けました</h2>
+        <div class="complete-icon" id="completeIcon">✓</div>
+        <h2 id="completeTitle">ご予約を受け付けました</h2>
         <p id="completeMsg" style="font-size:0.82rem;line-height:2"></p>
       </div>
       <a id="lineSendBtn" href="#" target="_blank" style="display:none"
@@ -1069,8 +1069,12 @@ async function submitReservation() {
       if (getContactWay() === 'line') {
         lb.setAttribute('style', lb.getAttribute('data-style'));
         document.getElementById('lineHelp').style.display = 'block';
-        document.getElementById('completeMsg').innerHTML = '下のボタンからLINEで予約内容を送ってください。<br>送っていただいた内容に、LINEで確認のご連絡をいたします。';
+        document.getElementById('completeIcon').textContent = '!';
+        document.getElementById('completeTitle').textContent = 'あと1つ、LINEの送信をお願いします';
+        document.getElementById('completeMsg').innerHTML = '<strong style="color:#c0392b">まだご予約は完了していません。</strong><br>下のボタンを押して、LINEで予約内容を送ってください。<br>送っていただいた内容を確認し、LINEでご予約確定のご連絡をいたします。';
       } else {
+        document.getElementById('completeIcon').textContent = '✓';
+        document.getElementById('completeTitle').textContent = 'ご予約を受け付けました';
         const em = document.getElementById('guestEmail').value.trim();
         document.getElementById('completeMsg').textContent = '';
         document.getElementById('completeMsg').append('確認メールを ' + em + ' にお送りしました。', document.createElement('br'), '届かない場合は、迷惑メールフォルダをご確認ください。');
